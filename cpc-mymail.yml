@@ -1,0 +1,126 @@
+openapi: '3.0.2'
+info:
+  title: Canada Post App MyMail API
+  version: '0.1'
+servers:
+  - url: https://1i5z3519d0.execute-api.ca-central-1.amazonaws.com/mailmanager/v1
+components:
+  schemas:
+    MyMailError:
+      type: object
+      properties:
+        message:
+          type: string
+          description: 'Error message'
+  responses:
+    MyMailNotificationResponse:
+      description: 'MyMail notifications'
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              PageNumber:
+                type: integer
+              Results:
+                type: object
+                properties:
+                  Mailpieces:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        SOMIdentifier:
+                          type: string
+                        Mailer:
+                          type: object
+                          properties:
+                            Name:
+                              type: object
+                              properties:
+                                En:
+                                  type: string
+                                Fr:
+                                  type: string
+                            ReferenceID:
+                              type: string
+                            Logo:
+                              type: object
+                              properties:
+                                En:
+                                  type: string
+                                Fr:
+                                  type: string
+                                OID:
+                                  type: string
+                            OID:
+                              type: string
+                        ServiceType:
+                          type: integer
+                          description: |
+                            25 for mail arriving soon (or delivered if date is in the past),
+                            otherwise mail is out for delivery
+                        HasAd:
+                          type: boolean
+                        OID:
+                          type: string
+                  Date:
+                    type: string
+                    format: full-date
+                    description: 'Date on which the mailpieces were/will be delivered'
+  parameters:
+    CpcId:
+      name: cpcid
+      in: path
+      description: 'Derived by decoding the JWT token and getting the ''sub'' field'
+      required: true
+      schema:
+        type: string
+  securitySchemes:
+    myMailAuth:
+      type: http
+      description: |
+        After getting the access token and ID token, join them with a .
+        (i.e. `${access_token}.${id_token}`)
+      scheme: bearer
+      bearerFormat: '{access_token}.{id_token}'
+paths:
+  /notifications/{cpcid}:
+    get:
+      summary: 'MyMail notifications'
+      parameters:
+        - $ref: '#/components/parameters/CpcId'
+        - name: PageSize
+          in: query
+          schema:
+            type: integer
+        - name: PageNumber
+          in: query
+          schema:
+            type: integer
+        - name: startDate
+          in: query
+          schema:
+            type: string
+        - name: daySpan
+          in: query
+          description: '0 or absent to get only incoming mail, -7 to also include delivered mail'
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/MyMailNotificationResponse'
+        '401':
+          description: 'Unauthenticated error (missing, invalid, or expired bearer)'
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/MyMailError'
+        '403':
+          description: 'Unauthorized error (most likely invalid cpcid)'
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/MyMailError'
+security:
+  - myMailAuth: []

@@ -1,0 +1,123 @@
+openapi: '3.0.2'
+info:
+  title: Canada Post App OAuth
+  version: '0.1'
+servers:
+  - url: https://sso-osu.canadapost-postescanada.ca/mga/sps/oauth/oauth20
+components:
+  schemas:
+    BaseOAuthRequest:
+      type: object
+      properties:
+        client_id:
+          type: string
+          description: 'Client ID'
+          default: 'cpc-nativeapp-2020'
+        scope:
+          type: string
+          description: 'Token scope'
+          default: 'openid profile'
+        username:
+          type: string
+          description: 'Canada Post username'
+        grant_type:
+          type: string
+          description: 'Credentials to use to retrieve token'
+      required:
+        - client_id
+        - scope
+        - username
+        - grant_type
+    OAuthLoginRequest:
+      description: 'Request to authenticate using password'
+      allOf:
+        - $ref: '#/components/schemas/BaseOAuthRequest'
+        - type: object
+          properties:
+            grant_type:
+              default: 'password'
+            password:
+              type: string
+              format: password
+              description: 'Canada Post username''s password'
+          required:
+            - password
+    OAuthRefreshTokenRequest:
+      description: 'Request to authenticate using a refresh token'
+      allOf:
+        - $ref: '#/components/schemas/BaseOAuthRequest'
+        - type: object
+          properties:
+            grant_type:
+              default: 'refresh_token'
+            refresh_token:
+              type: string
+              description: 'Refresh token'
+          required:
+            - refresh_token
+  responses:
+    OAuthLoginResponse:
+      description: 'Authentication succeeded'
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              access_token:
+                type: string
+                description: 'Access token'
+              refresh_token:
+                type: string
+                description: 'Refresh token that can be used to re-authenticate'
+              scope:
+                type: string
+                description: 'Scope of the token, same as in the request'
+              id_token:
+                type: string
+                description: 'JWT token'
+              token_type:
+                type: string
+                description: Token type
+              expires_in:
+                type: integer
+                description: Expiration time of the token, in seconds
+            required:
+              - access_token
+              - refresh_token
+              - scope
+              - token_type
+              - expires_in
+    OAuthLoginError:
+      description: 'Authentication failed'
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              error_description:
+                type: string
+                description: 'Error description'
+              error:
+                type: string
+                description: 'Error code'
+            required:
+              - error_description
+              - error
+paths:
+  /token:
+    post:
+      summary: 'Log in with a password or a refresh token'
+      requestBody:
+        required: true
+        content:
+          'application/x-www-form-urlencoded':
+            schema:
+              # TODO the UI doesn't render this correctly
+              oneOf:
+                - $ref: '#/components/schemas/OAuthLoginRequest'
+                - $ref: '#/components/schemas/OAuthRefreshTokenRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/OAuthLoginResponse'
+        '400':
+          $ref: '#/components/responses/OAuthLoginError'
